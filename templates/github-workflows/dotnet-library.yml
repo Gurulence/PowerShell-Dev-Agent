@@ -1,0 +1,64 @@
+name: .NET Library CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Verify formatting
+        run: dotnet format --verify-no-changes --no-restore
+
+      - name: Build (warnings as errors)
+        run: dotnet build -c Release --no-restore -warnaserror
+
+      - name: Run unit tests with coverage
+        run: dotnet test -c Release --no-build --collect:"XPlat Code Coverage" --results-directory ./artifacts/test-results
+
+      - name: Audit vulnerable packages
+        run: dotnet list package --vulnerable --include-transitive
+
+      - name: Pack NuGet artifacts
+        run: dotnet pack -c Release --no-build -o ./artifacts/nupkg --include-symbols -p:SymbolPackageFormat=snupkg
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/nupkg/*
+
+  publish-nuget:
+    needs: build-test-audit
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/nupkg
+
+      - name: Push to NuGet (requires manual environment approval)
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push "./artifacts/nupkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate

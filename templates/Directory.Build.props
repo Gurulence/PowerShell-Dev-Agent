@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile Condition="!$(MSBuildProjectName.EndsWith('.Tests')) And !$(MSBuildProjectName.EndsWith('.Test')) And '$(IsTestProject)' != 'true'">true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

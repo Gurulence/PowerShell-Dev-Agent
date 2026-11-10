@@ -1,0 +1,52 @@
+{
+  "$schema": "./agent.config.schema.json",
+  "provider": {
+    "name": "openai",
+    "baseUrl": "https://api.openai.com/v1",
+    "model": "gpt-4.1",
+    "apiKeyEnv": "OPENAI_API_KEY",
+    "apiKeyHeader": "Authorization",
+    "apiKeyPrefix": "Bearer ",
+    "extraHeaders": {},
+    "temperature": 0.2,
+    "maxTokens": 4096,
+    "maxTokensParam": "max_tokens",
+    "requestTimeoutSec": 240,
+    "maxRetries": 3
+  },
+  "agent": {
+    "mode": "hybrid",
+    "maxTurns": 40,
+    "maxContextChars": 120000,
+    "approvalGate": "strict",
+    "allowOutsideWorkspace": false,
+    "auditLog": true,
+    "commandTimeoutSec": 300,
+    "maxToolOutputChars": 12000,
+    "logDir": ".agent/logs",
+    "sessionDir": ".agent/sessions",
+    "todoFile": ".agent/todo.md",
+    "pwshPath": "pwsh",
+    "windowsPowerShellPath": "powershell",
+    "posixShell": "/bin/bash",
+    "dotnetPath": "dotnet",
+    "gitPath": "git",
+    "denyPatterns": [
+      "\\bRemove-Item\\b(?=.*-(?:Recurse|Force)\\b).*?(?:['\"\\s]|^)(?:[a-zA-Z]:[\\\\/]+|/)(?:['\"\\s]|$)",
+      "\\bRemove-Item\\b.*(?:C:\\\\Windows|\\$env:SystemRoot|\\\\System32)",
+      "\\brm\\s+(?:-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r|--recursive\\s+--force)\\b[^|;&]*?(?:(?:\\s|^)/(?:\\s|\"|'|$)|--no-preserve-root)",
+      "\\bformat\\s+[a-zA-Z]:",
+      "\\bdiskpart\\b",
+      "\\bbcdedit\\b",
+      "\\bSet-ItemProperty\\b.*HKLM:",
+      "\\breg\\s+delete\\s+HKLM",
+      "\\bgit\\s+push\\b.*(?:--force|-f\\b)",
+      "\\bgit\\s+reset\\s+--hard",
+      "\\bInvoke-Expression\\b.*\\(.*\\b(?:Invoke-WebRequest|iwr|Invoke-RestMethod|irm|curl|wget)\\b",
+      "\\b(?:Invoke-WebRequest|iwr|Invoke-RestMethod|irm)\\b[^|]*\\|\\s*(?:Invoke-Expression|iex)\\b",
+      "\\b(?:curl|wget)\\b.*\\|\\s*(?:ba|z)?sh\\b",
+      "\\bPublish-(?:Module|Script)\\b",
+      "\\bdotnet\\s+nuget\\s+push\\b"
+    ]
+  }
+}

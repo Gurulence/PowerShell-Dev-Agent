@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Gurulence/PowerShell-Dev/config/agent.config.schema.json",
+  "title": "PS/.NET Agent Configuration",
+  "description": "Configuration for the gated, human-in-the-loop PowerShell and .NET engineering agent.",
+  "type": "object",
+  "required": ["provider", "agent"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "object",
+      "required": ["baseUrl", "model", "apiKeyEnv"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Provider hint: openai, azure, openrouter, groq, ollama, lmstudio, or custom.",
+          "default": "openai"
+        },
+        "baseUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "OpenAI-compatible API base URL (without trailing /chat/completions)."
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Model identifier sent to /chat/completions."
+        },
+        "apiKeyEnv": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Environment variable (or ~/.agent/secrets.xml key) holding the API key."
+        },
+        "apiKeyHeader": {
+          "type": "string",
+          "default": "Authorization"
+        },
+        "apiKeyPrefix": {
+          "type": "string",
+          "default": "Bearer "
+        },
+        "extraHeaders": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.2
+        },
+        "maxTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4096
+        },
+        "maxTokensParam": {
+          "type": "string",
+          "enum": ["max_tokens", "max_completion_tokens"],
+          "default": "max_tokens"
+        },
+        "requestTimeoutSec": {
+          "type": "integer",
+          "minimum": 5,
+          "default": 240
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "required": ["mode", "approvalGate"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["planner", "hybrid", "executor"],
+          "default": "hybrid"
+        },
+        "maxTurns": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 40
+        },
+        "maxContextChars": {
+          "type": "integer",
+          "minimum": 8000,
+          "default": 120000
+        },
+        "approvalGate": {
+          "type": "string",
+          "enum": ["strict", "all", "readonly-auto"],
+          "description": "strict = manual Y/N/F/Q on every tool call (no session auto-allow); all = manual gate with optional [A]lways per session; readonly-auto = auto-approve read-only inspection tools only.",
+          "default": "strict"
+        },
+        "allowOutsideWorkspace": {
+          "type": "boolean",
+          "default": false
+        },
+        "auditLog": {
+          "type": "boolean",
+          "default": true
+        },
+        "commandTimeoutSec": {
+          "type": "integer",
+          "minimum": 5,
+          "default": 300
+        },
+        "maxToolOutputChars": {
+          "type": "integer",
+          "minimum": 500,
+          "default": 12000
+        },
+        "logDir": {
+          "type": "string",
+          "default": ".agent/logs"
+        },
+        "sessionDir": {
+          "type": "string",
+          "default": ".agent/sessions"
+        },
+        "todoFile": {
+          "type": "string",
+          "default": ".agent/todo.md"
+        },
+        "pwshPath": {
+          "type": "string",
+          "default": "pwsh"
+        },
+        "windowsPowerShellPath": {
+          "type": "string",
+          "default": "powershell"
+        },
+        "posixShell": {
+          "type": "string",
+          "default": "/bin/bash"
+        },
+        "dotnetPath": {
+          "type": "string",
+          "default": "dotnet"
+        },
+        "gitPath": {
+          "type": "string",
+          "default": "git"
+        },
+        "denyPatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Regex patterns that hard-block destructive or unapproved commands before prompting."
+        }
+      }
+    }
+  }
+}

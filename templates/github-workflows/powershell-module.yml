@@ -1,0 +1,78 @@
+name: PowerShell Module CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PowerShell quality modules
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Scope CurrentUser -Force
+          Install-Module -Name Pester -MinimumVersion 5.3 -Scope CurrentUser -Force
+
+      - name: Run PSScriptAnalyzer (5.1 + 7.0 compatibility)
+        shell: pwsh
+        run: |
+          $settings = if (Test-Path '.vscode/PSScriptAnalyzerSettings.psd1') { '.vscode/PSScriptAnalyzerSettings.psd1' } else { 'PSGallery' }
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings $settings
+          if ($results) {
+            $results | Format-Table -AutoSize
+            $errors = @($results | Where-Object Severity -in @('Error', 'ParseError'))
+            if ($errors.Count -gt 0) { throw "PSScriptAnalyzer reported $($errors.Count) error(s)." }
+          }
+
+      - name: Run Pester suite (PowerShell 7)
+        shell: pwsh
+        run: |
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = @('./tests')
+          $cfg.Run.PassThru = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          $res = Invoke-Pester -Configuration $cfg
+          if ($res.FailedCount -gt 0) { throw "$($res.FailedCount) test(s) failed." }
+
+      - name: Run Pester suite (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Install-Module -Name Pester -MinimumVersion 5.3 -Scope CurrentUser -Force -SkipPublisherCheck
+          $cfg = New-PesterConfiguration
+          $cfg.Run.Path = @('./tests')
+          $cfg.Run.PassThru = $true
+          $cfg.Output.Verbosity = 'Detailed'
+          $res = Invoke-Pester -Configuration $cfg
+          if ($res.FailedCount -gt 0) { throw "$($res.FailedCount) test(s) failed." }
+
+  publish-psgallery:
+    needs: analyze-and-test
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish module (requires manual environment approval)
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          $manifest = Get-ChildItem -Path './src' -Filter '*.psd1' -Recurse | Select-Object -First 1
+          if (-not $manifest) { throw 'No .psd1 module manifest found under ./src' }
+          Test-ModuleManifest -Path $manifest.FullName
+          Publish-Module -Path $manifest.DirectoryName -NuGetApiKey $env:PSGALLERY_API_KEY
